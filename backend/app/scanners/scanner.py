@@ -221,15 +221,25 @@ class SecurityScanner:
 
                     vulnerabilities.append({
                         "type": vulnerability_name,
+
                         "file": str(
                             file_path.relative_to(path)
                         ),
+
                         "line_number": line_number,
+
                         "count": len(matches),
+
                         "severity": metadata["severity"],
+
                         "cvss": metadata["cvss"],
+
                         "description": metadata["description"],
+
                         "recommendation": metadata["recommendation"],
+
+                        # Actual vulnerable source code
+                        "code": line.strip(),
                     })
 
         # ---------------------------------------------------------

@@ -4,6 +4,8 @@ from app.models.project import Project
 from app.models.scan import Scan
 from app.models.vulnerability import Vulnerability
 
+from app.ai.ollama_service import analyze_vulnerability
+
 
 def create_scan(
     db: Session,
@@ -49,6 +51,32 @@ def save_scan_results(
         []
     ):
 
+        # -------------------------------------------------
+        # AI security analysis
+        # -------------------------------------------------
+
+        ai_result = {}
+
+        try:
+            ai_result = analyze_vulnerability(
+                vulnerability_type=item["type"],
+                file_path=item.get("file", ""),
+                line_number=item.get("line_number"),
+                severity=item.get("severity"),
+                cvss=item.get("cvss"),
+                vulnerable_code=item.get("code"),
+            )
+
+        except Exception as e:
+            print(
+                f"AI analysis failed for "
+                f"{item.get('type')}: {e}"
+            )
+
+        # -------------------------------------------------
+        # Save vulnerability + AI analysis
+        # -------------------------------------------------
+
         vulnerability = Vulnerability(
             scan_id=scan.id,
 
@@ -59,7 +87,7 @@ def save_scan_results(
             ),
 
             line_number=item.get(
-                "line_number"
+                "line"
             ),
 
             count=item.get(
@@ -81,6 +109,27 @@ def save_scan_results(
 
             recommendation=item.get(
                 "recommendation"
+            ),
+
+            # AI-generated fields
+            ai_explanation=ai_result.get(
+                "explanation"
+            ),
+
+            ai_impact=ai_result.get(
+                "impact"
+            ),
+
+            ai_attack_scenario=ai_result.get(
+                "attack_scenario"
+            ),
+
+            ai_remediation=ai_result.get(
+                "remediation"
+            ),
+
+            ai_secure_coding_advice=ai_result.get(
+                "secure_coding_advice"
             ),
         )
 

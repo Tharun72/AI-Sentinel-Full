@@ -9,6 +9,14 @@ export interface Vulnerability {
   cvss: number | null;
   description: string | null;
   recommendation: string | null;
+
+  // AI Security Analysis
+  ai_explanation: string | null;
+  ai_impact: string | null;
+  ai_attack_scenario: string | null;
+  ai_remediation: string | null;
+  ai_secure_coding_advice: string | null;
+
   created_at: string | null;
 }
 

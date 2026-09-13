@@ -9,6 +9,8 @@ import {
   Radar,
   FolderGit2,
   Play,
+  ChevronUp,
+  Brain,
 } from 'lucide-react';
 
 import { getProjects } from '../services/projectService';
@@ -40,9 +42,8 @@ export function ScanPage() {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   const [expanded, setExpanded] = useState<number | null>(null);
-
+  const [expandedAI, setExpandedAI] = useState<number | null>(null);
   // --------------------------------------------------
   // Load projects
   // --------------------------------------------------
@@ -642,144 +643,343 @@ useEffect(() => {
 
                             </div>
 
-                            {/* Vulnerabilities */}
+{/* Vulnerabilities */}
 
-                            <div className="mt-6">
+<div className="mt-6">
 
-                              <div className="mb-3 flex items-center gap-2">
+  <div className="mb-3 flex items-center gap-2">
 
-                                <ShieldAlert
-                                  size={15}
-                                  className="text-brand-red"
-                                />
+    <ShieldAlert
+      size={15}
+      className="text-brand-red"
+    />
 
-                                <h3 className="text-sm font-semibold text-white">
-                                  Vulnerabilities
-                                </h3>
+    <h3 className="text-sm font-semibold text-white">
+      Vulnerabilities
+    </h3>
 
-                              </div>
-
-                              {!scan.vulnerabilities ||
-                              scan.vulnerabilities.length === 0 ? (
-                                <div className="rounded-xl border border-brand-emerald/20 bg-brand-emerald/5 p-4 text-sm text-brand-emerald">
-                                  No vulnerabilities detected in this scan.
-                                </div>
-                              ) : (
-                                <div className="space-y-2">
-
-                                  {scan.vulnerabilities.map(
-                                    (vulnerability) => (
-<div
-  key={vulnerability.id}
-  className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
->
-  <div className="flex items-start justify-between gap-4">
-    <div className="min-w-0 flex-1">
-
-      {/* Vulnerability title */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          tone={
-            vulnerability.severity === 'critical'
-              ? 'red'
-              : vulnerability.severity === 'high'
-              ? 'amber'
-              : vulnerability.severity === 'medium'
-              ? 'blue'
-              : 'slate'
-          }
-        >
-          {vulnerability.severity?.toUpperCase() ?? 'UNKNOWN'}
-        </Badge>
-
-        <span className="font-medium text-slate-100">
-          {vulnerability.vulnerability_type}
-        </span>
-      </div>
-
-      {/* File + line */}
-      <p className="mt-2 font-mono text-xs text-slate-400">
-        {vulnerability.file_path ?? 'Unknown file'}
-        {vulnerability.line_number != null &&
-          ` : Line ${vulnerability.line_number}`}
-      </p>
-
-      {/* CVSS */}
-      {vulnerability.cvss != null && (
-        <div className="mt-3">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500">
-            CVSS
-          </span>
-
-          <span className="ml-2 text-sm font-bold text-white">
-            {vulnerability.cvss.toFixed(1)}
-          </span>
-        </div>
-      )}
-
-      {/* Description */}
-      {vulnerability.description && (
-        <div className="mt-4">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500">
-            Description
-          </div>
-
-          <p className="mt-1 text-sm leading-6 text-slate-300">
-            {vulnerability.description}
-          </p>
-        </div>
-      )}
-
-      {/* Recommendation */}
-      {vulnerability.recommendation && (
-        <div className="mt-4">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500">
-            Recommendation
-          </div>
-
-          <p className="mt-1 text-sm leading-6 text-slate-300">
-            {vulnerability.recommendation}
-          </p>
-        </div>
-      )}
-    </div>
-
-    {/* Count */}
-    <div className="shrink-0 text-right">
-      <div className="text-lg font-bold text-brand-red">
-        {vulnerability.count ?? 1}
-      </div>
-
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">
-        Count
-      </div>
-    </div>
   </div>
-</div>
-                                    )
-                                  )}
 
-                                </div>
-                              )}
+  {!scan.vulnerabilities ||
+  scan.vulnerabilities.length === 0 ? (
 
-                            </div>
+    <div className="rounded-xl border border-brand-emerald/20 bg-brand-emerald/5 p-4 text-sm text-brand-emerald">
+      No vulnerabilities detected in this scan.
+    </div>
 
-                          </div>
+  ) : (
 
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+    <div className="space-y-2">
 
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+      {scan.vulnerabilities.map((vulnerability) => (
+
+        <div
+          key={vulnerability.id}
+          className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4"
+        >
+
+          {/* ========================================= */}
+          {/* MAIN VULNERABILITY INFORMATION */}
+          {/* ========================================= */}
+
+          <div className="flex items-start justify-between gap-4">
+
+            <div className="min-w-0 flex-1">
+
+              {/* Vulnerability title */}
+
+              <div className="flex flex-wrap items-center gap-2">
+
+                <Badge
+                  tone={
+                    vulnerability.severity === "critical"
+                      ? "red"
+                      : vulnerability.severity === "high"
+                      ? "amber"
+                      : vulnerability.severity === "medium"
+                      ? "blue"
+                      : "slate"
+                  }
+                >
+                  {vulnerability.severity?.toUpperCase() ?? "UNKNOWN"}
+                </Badge>
+
+                <span className="font-medium text-slate-100">
+                  {vulnerability.vulnerability_type}
+                </span>
+
+              </div>
+
+              {/* File + line */}
+
+              <p className="mt-2 font-mono text-xs text-slate-400">
+                {vulnerability.file_path ?? "Unknown file"}
+
+                {vulnerability.line_number != null &&
+                  ` : Line ${vulnerability.line_number}`}
+              </p>
+
+              {/* CVSS */}
+
+              {vulnerability.cvss != null && (
+
+                <div className="mt-3">
+
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500">
+                    CVSS
+                  </span>
+
+                  <span className="ml-2 text-sm font-bold text-white">
+                    {vulnerability.cvss.toFixed(1)}
+                  </span>
+
+                </div>
+
+              )}
+
+              {/* Description */}
+
+              {vulnerability.description && (
+
+                <div className="mt-4">
+
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                    Description
+                  </div>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-300">
+                    {vulnerability.description}
+                  </p>
+
+                </div>
+
+              )}
+
+              {/* Recommendation */}
+
+              {vulnerability.recommendation && (
+
+                <div className="mt-4">
+
+                  <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                    Recommendation
+                  </div>
+
+                  <p className="mt-1 text-sm leading-6 text-slate-300">
+                    {vulnerability.recommendation}
+                  </p>
+
+                </div>
+
+              )}
+
+            </div>
+
+            {/* Count */}
+
+            <div className="shrink-0 text-right">
+
+              <div className="text-lg font-bold text-brand-red">
+                {vulnerability.count ?? 1}
+              </div>
+
+              <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                Count
+              </div>
+
+            </div>
 
           </div>
-        )}
 
-      </Card>
+          {/* ========================================= */}
+          {/* AI SECURITY ANALYSIS */}
+          {/* ========================================= */}
+
+          {(
+            vulnerability.ai_explanation ||
+            vulnerability.ai_impact ||
+            vulnerability.ai_attack_scenario ||
+            vulnerability.ai_remediation ||
+            vulnerability.ai_secure_coding_advice
+          ) && (
+
+            <div className="mt-5 border-t border-white/[0.06] pt-4">
+
+              {/* AI Toggle */}
+
+              <button
+                type="button"
+                onClick={() =>
+                  setExpandedAI(
+                    expandedAI === vulnerability.id
+                      ? null
+                      : vulnerability.id
+                  )
+                }
+                className="flex w-full items-center justify-between rounded-lg border border-brand-cyan/20 bg-brand-cyan/5 px-4 py-3 text-left transition hover:bg-brand-cyan/10"
+              >
+
+                <div className="flex items-center gap-2">
+
+                  <Brain
+                    size={16}
+                    className="text-brand-cyan"
+                  />
+
+                  <span className="text-sm font-semibold text-brand-cyan">
+                    AI Security Analysis
+                  </span>
+
+                </div>
+
+                {expandedAI === vulnerability.id ? (
+
+                  <ChevronUp
+                    size={16}
+                    className="text-slate-400"
+                  />
+
+                ) : (
+
+                  <ChevronDown
+                    size={16}
+                    className="text-slate-400"
+                  />
+
+                )}
+
+              </button>
+
+              {/* AI Content */}
+
+              {expandedAI === vulnerability.id && (
+
+                <div className="mt-3 space-y-4 rounded-lg border border-white/[0.06] bg-black/10 p-4">
+
+                  {/* Explanation */}
+
+                  {vulnerability.ai_explanation && (
+
+                    <div>
+
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                        Explanation
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-300">
+                        {vulnerability.ai_explanation}
+                      </p>
+
+                    </div>
+
+                  )}
+
+                  {/* Impact */}
+
+                  {vulnerability.ai_impact && (
+
+                    <div>
+
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                        Impact
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-300">
+                        {vulnerability.ai_impact}
+                      </p>
+
+                    </div>
+
+                  )}
+
+                  {/* Attack Scenario */}
+
+                  {vulnerability.ai_attack_scenario && (
+
+                    <div>
+
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                        Attack Scenario
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-300">
+                        {vulnerability.ai_attack_scenario}
+                      </p>
+
+                    </div>
+
+                  )}
+
+                  {/* AI Remediation */}
+
+                  {vulnerability.ai_remediation && (
+
+                    <div>
+
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                        AI Remediation
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-300">
+                        {vulnerability.ai_remediation}
+                      </p>
+
+                    </div>
+
+                  )}
+
+                  {/* Secure Coding Advice */}
+
+                  {vulnerability.ai_secure_coding_advice && (
+
+                    <div>
+
+                      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                        Secure Coding Advice
+                      </div>
+
+                      <p className="mt-1 text-sm leading-6 text-slate-300">
+                        {vulnerability.ai_secure_coding_advice}
+                      </p>
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              )}
+
+            </div>
+
+          )}
+
+        </div>
+
+      ))}
 
     </div>
-  );
+
+  )}
+
+</div>
+
+                    </div>
+                  </motion.div>
+                )}
+
+              </AnimatePresence>
+
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+
+    </div>
+  )}
+
+</Card>
+
+</div>
+);
 }
