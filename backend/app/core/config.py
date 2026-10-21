@@ -55,6 +55,9 @@ class Settings(BaseSettings):
 
     UPLOAD_DIR: str
     REPORT_DIR: str
+    REPORT_MAX_SCANS: int = 1_000
+    REPORT_MAX_FINDINGS: int = 10_000
+    REPORT_MAX_BYTES: int = 10_000_000
 
     if USES_PYDANTIC_SETTINGS:
         model_config = SettingsConfigDict(

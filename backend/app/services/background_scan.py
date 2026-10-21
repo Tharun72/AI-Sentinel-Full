@@ -270,6 +270,17 @@ def run_scan_background(scan_id: int) -> None:
             timeout=min(settings.GIT_CLONE_TIMEOUT_SECONDS, _remaining_seconds(deadline)),
             env=git_environment,
         )
+        revision_result = subprocess.run(
+            ["git", "-C", str(repository_path), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=min(10, _remaining_seconds(deadline)),
+            env=git_environment,
+        )
+        revision = revision_result.stdout.strip() if isinstance(revision_result.stdout, str) else None
+        scan.repository_revision = revision[:128] if revision else None
+        db.commit()
         clone_duration = time.monotonic() - phase_started
         _repository_source_size(repository_path, deadline)
         if not _update_progress(

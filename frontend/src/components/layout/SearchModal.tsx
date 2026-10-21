@@ -39,16 +39,16 @@ export function SearchModal({ open, onClose, onNavigate }: { open: boolean; onCl
             transition={{ type: 'spring', damping: 26, stiffness: 320 }}
             className="relative w-full max-w-xl glass-strong overflow-hidden p-0"
           >
-            <div className="flex items-center gap-3 border-b border-white/[0.06] px-4">
+            <div className="flex items-center gap-3 border-b border-slate-200 px-4">
               <Search size={18} className="text-slate-400" />
               <input
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search pages, projects, CVEs…"
-                className="h-14 flex-1 bg-transparent text-base text-white placeholder:text-slate-500 focus:outline-none"
+                className="h-14 flex-1 bg-transparent text-base text-slate-900 placeholder:text-slate-400 focus:outline-none"
               />
-              <kbd className="hidden items-center gap-0.5 rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] text-slate-400 sm:inline-flex">
+              <kbd className="hidden items-center gap-0.5 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] text-slate-500 sm:inline-flex">
                 <Command size={10} /> K
               </kbd>
             </div>
@@ -60,7 +60,7 @@ export function SearchModal({ open, onClose, onNavigate }: { open: boolean; onCl
                   <button
                     key={n.id}
                     onClick={() => { onNavigate(n.id); onClose(); }}
-                    className={twMerge('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white')}
+                    className={twMerge('flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950')}
                   >
                     <Icon size={16} className="text-slate-400" /> {n.label}
                   </button>
@@ -68,7 +68,7 @@ export function SearchModal({ open, onClose, onNavigate }: { open: boolean; onCl
               })}
               {results.length === 0 && <div className="px-3 py-6 text-center text-sm text-slate-500">No results for "{query}"</div>}
             </div>
-            <div className="flex items-center justify-between border-t border-white/[0.06] px-4 py-2.5 text-[10px] text-slate-500">
+            <div className="flex items-center justify-between border-t border-slate-200 px-4 py-2.5 text-[10px] text-slate-500">
               <span>{ALL_PAGES.length} pages</span>
               <span>Press Enter to open · Esc to close</span>
             </div>

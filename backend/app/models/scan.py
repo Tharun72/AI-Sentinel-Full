@@ -61,6 +61,8 @@ class Scan(Base):
         nullable=True
     )
 
+    repository_revision = Column(String(128), nullable=True)
+
     started_at = Column(
         DateTime,
         nullable=True

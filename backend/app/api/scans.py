@@ -3,14 +3,17 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     HTTPException,
+    Query,
+    Response,
     status,
 )
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import get_current_user
 from app.database.database import get_db
 from app.models.project import Project
+from app.models.scan import Scan
 from app.schemas.scan import ScanCreate, ScanProgressResponse, ScanResponse
 
 from app.services.scan_service import (
@@ -23,6 +26,7 @@ from app.services.background_scan import (
     run_scan_background,
 )
 from app.services.repository_validation import validate_repository_url
+from app.services.report_service import build_report
 
 
 router = APIRouter(
@@ -165,6 +169,38 @@ def get_single_scan(
         )
 
     return scan
+
+
+@router.get("/reports", tags=["Reports"])
+def export_reports(
+    report_format: str = Query("json", alias="format", pattern="^(json|csv|sarif)$"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    projects = (
+        db.query(Project)
+        .filter(Project.owner_id == current_user.id)
+        .order_by(Project.id)
+        .all()
+    )
+    project_ids = [project.id for project in projects]
+    scans = (
+        db.query(Scan)
+        .options(selectinload(Scan.vulnerabilities))
+        .filter(Scan.project_id.in_(project_ids))
+        .order_by(Scan.created_at.desc())
+        .all()
+        if project_ids else []
+    )
+    try:
+        content, media_type, filename = build_report(projects, scans, report_format)
+    except ValueError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get(

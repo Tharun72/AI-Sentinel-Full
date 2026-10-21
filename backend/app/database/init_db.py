@@ -19,6 +19,7 @@ SCAN_PROGRESS_COLUMNS = {
     "ai_duration_seconds": "FLOAT",
     "persistence_duration_seconds": "FLOAT",
     "updated_at": "TIMESTAMP",
+    "repository_revision": "VARCHAR(128)",
 }
 
 

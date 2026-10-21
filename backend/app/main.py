@@ -24,8 +24,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.include_router(projects_router)
 app.include_router(scans_router)
+app.include_router(projects_router)
 
 @app.on_event("startup")
 def startup():

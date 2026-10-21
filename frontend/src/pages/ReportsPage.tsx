@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { SeverityPieChart, VulnerabilityTrendChart, type SeverityPoint, type TrendPoint } from '../components/charts/Charts';
 import { getWorkspaceData } from '../services/workspaceService';
+import { downloadReport, type ReportFormat } from '../services/reportService';
 import type { Project } from '../types/project';
 import type { Scan, Vulnerability } from '../types/scan';
 
@@ -16,6 +17,7 @@ export function ReportsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [scans, setScans] = useState<Scan[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<ReportFormat | null>(null);
 
   useEffect(() => { void getWorkspaceData().then((data) => { setProjects(data.projects); setScans(data.scans); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to prepare the report.')); }, []);
 
@@ -33,18 +35,24 @@ export function ReportsPage() {
     return { counts, severity, trend, totalFindings, completed: completed.length, posture };
   }, [scans]);
 
-  function exportJson() {
-    const payload = { generated_at: new Date().toISOString(), projects, scans };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-    const link = document.createElement('a'); link.href = url; link.download = 'ai-sentinel-security-report.json'; link.click(); URL.revokeObjectURL(url);
+  async function exportReport(format: ReportFormat) {
+    try {
+      setDownloading(format);
+      setError(null);
+      await downloadReport(format);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to generate the report.');
+    } finally {
+      setDownloading(null);
+    }
   }
 
   return <div className="space-y-6">
-    <PageHeader title="Reports" subtitle="A live report derived only from persisted project and scan records." actions={<Button onClick={exportJson} disabled={!scans.length}><FileJson size={15} /> Export JSON</Button>} />
+    <PageHeader title="Reports" subtitle="Server-generated exports derived only from persisted project and scan records." actions={<><Button onClick={() => void exportReport('json')} disabled={!scans.length || downloading !== null}><FileJson size={15} /> {downloading === 'json' ? 'Generating…' : 'Export JSON'}</Button><Button variant="secondary" onClick={() => void exportReport('csv')} disabled={!scans.length || downloading !== null}><Download size={15} /> CSV</Button><Button variant="secondary" onClick={() => void exportReport('sarif')} disabled={!scans.length || downloading !== null}>SARIF</Button></>} />
     {error && <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle size={18} className="shrink-0" />{error}</div>}
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Projects" value={String(projects.length)} icon={FolderGit2} /><Metric label="Completed scans" value={String(report.completed)} icon={ShieldCheck} /><Metric label="Findings" value={String(report.totalFindings)} icon={AlertCircle} /><Metric label="Posture score" value={report.posture?.toString() ?? '—'} icon={ShieldCheck} /></div>
     <div className="grid gap-4 lg:grid-cols-3"><Card className="lg:col-span-2"><CardHeader title="Finding trend" subtitle="Findings grouped by scan creation date." /><VulnerabilityTrendChart data={report.trend} /></Card><Card><CardHeader title="Severity distribution" subtitle="All persisted scanner findings." /><SeverityPieChart data={report.severity} /></Card></div>
-    <Card><CardHeader title="Risk summary" subtitle="Counts are direct totals from the completed and historical scans available to this account." action={<Badge tone={report.counts.critical > 0 ? 'red' : 'emerald'}>{report.counts.critical > 0 ? 'Action required' : 'No critical findings'}</Badge>} /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.counts).map(([severity, value]) => <div key={severity} className="rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{severity}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></div>)}</div><div className="mt-5 flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><Download size={18} className="shrink-0" /><p>JSON export is available client-side using the exact records displayed here. PDF, CSV, SARIF, and saved-report APIs are not configured by this backend.</p></div></Card>
+    <Card><CardHeader title="Risk summary" subtitle="Counts are direct totals from the completed and historical scans available to this account." action={<Badge tone={report.counts.critical > 0 ? 'red' : 'emerald'}>{report.counts.critical > 0 ? 'Action required' : 'No critical findings'}</Badge>} /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.counts).map(([severity, value]) => <div key={severity} className="rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{severity}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></div>)}</div><div className="mt-5 flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><Download size={18} className="shrink-0" /><p>Exports are generated server-side from this account's persisted records. PDF and saved-report workflows are not configured.</p></div></Card>
   </div>;
 }
 

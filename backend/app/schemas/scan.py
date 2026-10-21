@@ -21,6 +21,7 @@ class ScanResponse(BaseModel):
 
     repository_url: str | None = None
     branch: str | None = None
+    repository_revision: str | None = None
 
     started_at: datetime | None = None
     completed_at: datetime | None = None
