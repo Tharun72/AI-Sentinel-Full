@@ -9,43 +9,37 @@
     border-color: theme('colors.border.subtle');
   }
   html {
-    color-scheme: dark;
+    color-scheme: light;
   }
   body {
-    @apply bg-bg-base text-slate-200 font-sans antialiased;
+    @apply bg-bg-base text-slate-700 font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
+  button, input, select, textarea { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-offset-2; }
   ::selection {
-    background: rgba(59, 130, 246, 0.3);
-    color: #fff;
+    background: rgba(37, 99, 235, 0.18);
+    color: #0f172a;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-white/[0.03] backdrop-blur-xl border border-white/[0.06] rounded-2xl;
+    @apply rounded-xl border border-slate-200 bg-white shadow-glass;
   }
   .glass-hover {
-    @apply transition-all duration-300 hover:bg-white/[0.05] hover:border-white/[0.1];
+    @apply transition-colors duration-200 hover:border-slate-300;
   }
   .glass-strong {
-    @apply bg-white/[0.05] backdrop-blur-2xl border border-white/[0.08] rounded-2xl;
+    @apply rounded-xl border border-slate-200 bg-white shadow-xl;
   }
-  .grid-bg {
-    background-image:
-      linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-  .glow-text {
-    text-shadow: 0 0 20px rgba(59,130,246,0.5);
-  }
+  .app-input { @apply h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400; }
+  .app-input:focus { @apply border-brand-blue ring-2 ring-brand-blue/15; }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
+    scrollbar-color: #cbd5e1 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -55,11 +49,11 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.1);
+    background: #cbd5e1;
     border-radius: 3px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,255,255,0.2);
+    background: #94a3b8;
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

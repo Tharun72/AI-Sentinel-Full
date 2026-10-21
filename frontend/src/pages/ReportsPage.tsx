@@ -1,107 +1,51 @@
-import { FileDown, FileJson, ShieldCheck, AlertTriangle, TrendingUp, FileBarChart, Globe } from 'lucide-react';
-import { SEVERITY_DIST } from '../lib/data';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertCircle, Download, FileJson, FolderGit2, ShieldCheck } from 'lucide-react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { Card, CardHeader } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { ScoreRing } from '../components/ui/ScoreRing';
-import { SeverityPieChart, VulnerabilityTrendChart } from '../components/charts/Charts';
+import { SeverityPieChart, VulnerabilityTrendChart, type SeverityPoint, type TrendPoint } from '../components/charts/Charts';
+import { getWorkspaceData } from '../services/workspaceService';
+import type { Project } from '../types/project';
+import type { Scan, Vulnerability } from '../types/scan';
+
+const meta: Record<string, { color: string; label: string }> = { critical: { color: '#dc2626', label: 'Critical' }, high: { color: '#d97706', label: 'High' }, medium: { color: '#2563eb', label: 'Medium' }, low: { color: '#0891b2', label: 'Low' } };
+function count(finding: Vulnerability) { return finding.count ?? 1; }
 
 export function ReportsPage() {
-  const total = SEVERITY_DIST.reduce((a, s) => a + s.value, 0);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Reports"
-        subtitle="Export, share, and review your security posture"
-        actions={
-          <>
-            <Button variant="secondary" size="md"><FileJson size={15} /> Export JSON</Button>
-            <Button variant="primary" size="md"><FileDown size={15} /> Export PDF</Button>
-          </>
-        }
-      />
+  useEffect(() => { void getWorkspaceData().then((data) => { setProjects(data.projects); setScans(data.scans); }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : 'Unable to prepare the report.')); }, []);
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Executive Dashboard" subtitle="Weekly security posture — Q3 W2" action={<Badge tone="emerald">Healthy</Badge>} />
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="flex flex-col items-center justify-center rounded-xl bg-white/[0.02] p-4">
-              <ScoreRing score={84} size={120} label="Posture" />
-            </div>
-            <div className="space-y-3 sm:col-span-2">
-              <Stat icon={<ShieldCheck size={15} className="text-brand-emerald" />} label="Projects passing" value="19 / 24" tone="emerald" />
-              <Stat icon={<AlertTriangle size={15} className="text-brand-red" />} label="Open criticals" value="8" tone="red" />
-              <Stat icon={<TrendingUp size={15} className="text-brand-blue" />} label="MTTR (mean time to remediate)" value="3.4 days" tone="blue" />
-              <Stat icon={<FileBarChart size={15} className="text-brand-amber" />} label="Scans this week" value="109" tone="amber" />
-            </div>
-          </div>
-        </Card>
+  const report = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    scans.flatMap((scan) => scan.vulnerabilities).forEach((finding) => { const severity = finding.severity?.toLowerCase() ?? 'low'; if (severity in counts) counts[severity as keyof typeof counts] += count(finding); });
+    const severity: SeverityPoint[] = Object.entries(counts).map(([key, value]) => ({ name: meta[key].label, value, color: meta[key].color }));
+    const days = Array.from({ length: 7 }, (_, offset) => { const date = new Date(); date.setDate(date.getDate() - (6 - offset)); date.setHours(0, 0, 0, 0); return date; });
+    const trend: TrendPoint[] = days.map((date) => ({ date: date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }), critical: 0, high: 0, medium: 0, low: 0 }));
+    scans.forEach((scan) => { if (!scan.created_at) return; const date = new Date(scan.created_at); date.setHours(0, 0, 0, 0); const index = days.findIndex((day) => day.getTime() === date.getTime()); if (index === -1) return; scan.vulnerabilities.forEach((finding) => { const severity = finding.severity?.toLowerCase() ?? 'low'; if (severity in counts) trend[index][severity as keyof Omit<TrendPoint, 'date'>] += count(finding); }); });
+    const totalFindings = Object.values(counts).reduce((total, value) => total + value, 0);
+    const completed = scans.filter((scan) => scan.status === 'completed');
+    const latest = new Map<number, Scan>(); scans.forEach((scan) => { if (!latest.has(scan.project_id)) latest.set(scan.project_id, scan); });
+    const posture = latest.size ? Math.round([...latest.values()].reduce((total, scan) => total + Math.max(0, 100 - (scan.risk_score ?? 0) * 10), 0) / latest.size) : null;
+    return { counts, severity, trend, totalFindings, completed: completed.length, posture };
+  }, [scans]);
 
-        <Card>
-          <CardHeader title="Risk Summary" subtitle="By severity" />
-          <div className="space-y-2.5">
-            {SEVERITY_DIST.map((s) => (
-              <div key={s.name} className="flex items-center gap-3">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-                <span className="flex-1 text-sm text-slate-300">{s.name}</span>
-                <span className="text-sm font-semibold text-white">{s.value}</span>
-                <span className="w-12 text-right text-xs text-slate-500">{Math.round((s.value / total) * 100)}%</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-            <div className="flex items-center gap-2 text-xs text-slate-400"><Globe size={13} /> Coverage</div>
-            <p className="mt-1 text-sm text-slate-200">24 repositories · 6 languages · 1,840 active rules</p>
-          </div>
-        </Card>
-      </div>
+  function exportJson() {
+    const payload = { generated_at: new Date().toISOString(), projects, scans };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'ai-sentinel-security-report.json'; link.click(); URL.revokeObjectURL(url);
+  }
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Vulnerability Trend" subtitle="Last 7 days" />
-          <VulnerabilityTrendChart />
-        </Card>
-        <Card>
-          <CardHeader title="Severity Distribution" subtitle="All active findings" />
-          <SeverityPieChart />
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader title="Export Options" subtitle="Choose a format and scope" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: 'Executive PDF', desc: 'Board-ready summary', icon: FileDown },
-            { label: 'Full JSON', desc: 'Machine-readable findings', icon: FileJson },
-            { label: 'SARIF', desc: 'IDE / CI integration', icon: FileBarChart },
-            { label: 'CSV', desc: 'Spreadsheet export', icon: FileJson },
-          ].map((o) => {
-            const Icon = o.icon;
-            return (
-              <button key={o.label} className="group rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-colors hover:border-brand-blue/30 hover:bg-brand-blue/5">
-                <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-blue/10 text-brand-blue"><Icon size={18} /></div>
-                <p className="mt-3 text-sm font-medium text-slate-100">{o.label}</p>
-                <p className="text-xs text-slate-500">{o.desc}</p>
-              </button>
-            );
-          })}
-        </div>
-      </Card>
-    </div>
-  );
+  return <div className="space-y-6">
+    <PageHeader title="Reports" subtitle="A live report derived only from persisted project and scan records." actions={<Button onClick={exportJson} disabled={!scans.length}><FileJson size={15} /> Export JSON</Button>} />
+    {error && <div className="flex gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertCircle size={18} className="shrink-0" />{error}</div>}
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Projects" value={String(projects.length)} icon={FolderGit2} /><Metric label="Completed scans" value={String(report.completed)} icon={ShieldCheck} /><Metric label="Findings" value={String(report.totalFindings)} icon={AlertCircle} /><Metric label="Posture score" value={report.posture?.toString() ?? '—'} icon={ShieldCheck} /></div>
+    <div className="grid gap-4 lg:grid-cols-3"><Card className="lg:col-span-2"><CardHeader title="Finding trend" subtitle="Findings grouped by scan creation date." /><VulnerabilityTrendChart data={report.trend} /></Card><Card><CardHeader title="Severity distribution" subtitle="All persisted scanner findings." /><SeverityPieChart data={report.severity} /></Card></div>
+    <Card><CardHeader title="Risk summary" subtitle="Counts are direct totals from the completed and historical scans available to this account." action={<Badge tone={report.counts.critical > 0 ? 'red' : 'emerald'}>{report.counts.critical > 0 ? 'Action required' : 'No critical findings'}</Badge>} /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(report.counts).map(([severity, value]) => <div key={severity} className="rounded-lg border border-slate-200 bg-slate-50 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{severity}</p><p className="mt-2 text-3xl font-bold text-slate-950">{value}</p></div>)}</div><div className="mt-5 flex gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><Download size={18} className="shrink-0" /><p>JSON export is available client-side using the exact records displayed here. PDF, CSV, SARIF, and saved-report APIs are not configured by this backend.</p></div></Card>
+  </div>;
 }
 
-function Stat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string; tone: 'emerald' | 'red' | 'blue' | 'amber' }) {
-  const tones = { emerald: 'text-brand-emerald', red: 'text-brand-red', blue: 'text-brand-blue', amber: 'text-brand-amber' };
-  return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-      <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/[0.04]">{icon}</div>
-      <div className="flex-1">
-        <p className="text-xs text-slate-400">{label}</p>
-        <p className={`text-sm font-semibold ${tones[tone]}`}>{value}</p>
-      </div>
-    </div>
-  );
-}
+function Metric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof ShieldCheck }) { return <Card className="p-4"><div className="flex items-center justify-between"><p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p><Icon size={17} className="text-brand-blue" /></div><p className="mt-3 text-3xl font-bold text-slate-950">{value}</p></Card>; }

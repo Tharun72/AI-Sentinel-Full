@@ -5,6 +5,15 @@ interface LoginResponse {
   token_type: string;
 }
 
+export interface CurrentUser {
+  id: number;
+  full_name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 export async function login(
   email: string,
   password: string
@@ -36,4 +45,8 @@ export function logout(): void {
 
 export function isAuthenticated(): boolean {
   return Boolean(localStorage.getItem("access_token"));
+}
+
+export async function getCurrentUser(): Promise<CurrentUser> {
+  return apiRequest<CurrentUser>("/auth/me");
 }

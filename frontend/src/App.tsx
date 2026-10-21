@@ -20,8 +20,20 @@ import { TeamPage } from './pages/TeamPage';
 import { ApiKeysPage } from './pages/ApiKeysPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
+import { logout } from './services/authService';
 
 import twMerge from './lib/twMerge';
+
+function getPageFromHash(): PageId {
+  const candidate = window.location.hash.replace(/^#\/?/, '') as PageId;
+  return candidate && candidate in NAVIGATION_PAGES ? candidate : 'dashboard';
+}
+
+const NAVIGATION_PAGES: Record<PageId, true> = {
+  dashboard: true, upload: true, editor: true, scan: true, 'ai-review': true,
+  fixes: true, blockchain: true, reports: true, history: true, team: true,
+  'api-keys': true, settings: true,
+};
 
 
 export default function App() {
@@ -29,13 +41,13 @@ export default function App() {
     () => Boolean(localStorage.getItem('access_token'))
   );
 
-  const [page, setPage] = useState<PageId>('dashboard');
+  const [page, setPage] = useState<PageId>(getPageFromHash);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const PAGES: Record<PageId, () => JSX.Element> = {
     dashboard: () => (
-  <DashboardPage onNavigate={(page) => setPage(page as PageId)} />
+  <DashboardPage onNavigate={(page) => navigate(page as PageId)} />
 ),
     upload: UploadPage,
     editor: EditorPage,
@@ -49,6 +61,18 @@ export default function App() {
     'api-keys': ApiKeysPage,
     settings: SettingsPage,
   };
+
+  const navigate = (nextPage: PageId) => {
+    window.location.hash = nextPage;
+    setPage(nextPage);
+  };
+
+  useEffect(() => {
+    const syncLocation = () => setPage(getPageFromHash());
+    window.addEventListener('hashchange', syncLocation);
+    if (!window.location.hash) window.location.hash = 'dashboard';
+    return () => window.removeEventListener('hashchange', syncLocation);
+  }, []);
   useEffect(() => {
     const handler = () => {
       setSearchOpen(true);
@@ -87,7 +111,7 @@ export default function App() {
     <div className="min-h-screen">
       <Sidebar
         current={page}
-        onNavigate={setPage}
+        onNavigate={navigate}
         collapsed={collapsed}
         onToggle={() => setCollapsed((v) => !v)}
         mobileOpen={mobileOpen}
@@ -103,6 +127,10 @@ export default function App() {
         <TopNav
           onOpenMobile={() => setMobileOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
+          onLogout={() => {
+            logout();
+            setAuthenticated(false);
+          }}
         />
 
         <main className="relative px-4 py-6 lg:px-8">
@@ -123,7 +151,7 @@ export default function App() {
       <SearchModal
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
-        onNavigate={setPage}
+        onNavigate={navigate}
       />
     </div>
   );

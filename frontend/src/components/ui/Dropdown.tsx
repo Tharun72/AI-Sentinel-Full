@@ -17,7 +17,7 @@ export function Dropdown({
   const [open, setOpen] = useState(false);
   return (
     <div className="relative">
-      <button onClick={() => setOpen((v) => !v)} className="focus:outline-none">
+      <button onClick={() => setOpen((v) => !v)}>
         {trigger}
       </button>
       <AnimatePresence>
@@ -48,9 +48,9 @@ export function DropdownItem({ children, onClick, icon }: { children: ReactNode;
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/[0.06] hover:text-white transition-colors"
+      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-950"
     >
-      {icon && <span className="text-slate-400">{icon}</span>}
+      {icon && <span className="text-slate-500">{icon}</span>}
       {children}
     </button>
   );
@@ -61,7 +61,7 @@ export function DropdownLabel({ children }: { children: ReactNode }) {
 }
 
 export function DropdownSeparator() {
-  return <div className="my-1 h-px bg-white/[0.06]" />;
+  return <div className="my-1 h-px bg-slate-200" />;
 }
 
 export { ChevronDown };

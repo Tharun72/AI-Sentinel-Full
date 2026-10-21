@@ -35,8 +35,8 @@ export function KpiCard({
       <div className={twMerge('absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br opacity-40 blur-2xl transition-opacity group-hover:opacity-60', accents[accent])} />
       <div className="relative flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-400">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-white">{value}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">{label}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-slate-950">{value}</p>
         </div>
         <div className={twMerge('grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br', accents[accent])}>
           {icon}
@@ -53,7 +53,7 @@ export function KpiCard({
             {trend === 'up' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
             {delta}
           </span>
-          <span className="text-slate-500">vs last week</span>
+          <span className="text-slate-500">{delta ? 'vs last week' : ''}</span>
         </div>
       )}
     </motion.div>

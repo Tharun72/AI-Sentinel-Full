@@ -31,7 +31,7 @@ export function Modal({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+          <div className="absolute inset-0 bg-slate-950/30 backdrop-blur-sm" onClick={onClose} />
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 10 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -40,12 +40,12 @@ export function Modal({
             className="relative w-full max-w-lg glass-strong p-6"
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-slate-100">{title}</h2>
-              <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+              <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+              <button onClick={onClose} className="text-slate-400 transition-colors hover:text-slate-900">
                 <X size={18} />
               </button>
             </div>
-            <div className="text-sm text-slate-300">{children}</div>
+            <div className="text-sm text-slate-700">{children}</div>
             {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
           </motion.div>
         </motion.div>

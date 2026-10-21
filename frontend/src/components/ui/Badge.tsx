@@ -5,12 +5,12 @@ import { SEVERITY, type Severity } from '../../lib/nav';
 type Tone = 'blue' | 'cyan' | 'emerald' | 'red' | 'amber' | 'slate' | Severity;
 
 const TONES: Record<Tone, string> = {
-  blue: 'bg-brand-blue/10 text-brand-blue border-brand-blue/25',
-  cyan: 'bg-brand-cyan/10 text-brand-cyan border-brand-cyan/25',
-  emerald: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/25',
-  red: 'bg-brand-red/10 text-brand-red border-brand-red/25',
-  amber: 'bg-brand-amber/10 text-brand-amber border-brand-amber/25',
-  slate: 'bg-white/[0.06] text-slate-300 border-white/10',
+  blue: 'bg-blue-50 text-blue-700 border-blue-200',
+  cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  red: 'bg-red-50 text-red-700 border-red-200',
+  amber: 'bg-amber-50 text-amber-800 border-amber-200',
+  slate: 'bg-slate-100 text-slate-700 border-slate-200',
   critical: `${SEVERITY.critical.bg} ${SEVERITY.critical.text} ${SEVERITY.critical.border}`,
   high: `${SEVERITY.high.bg} ${SEVERITY.high.text} ${SEVERITY.high.border}`,
   medium: `${SEVERITY.medium.bg} ${SEVERITY.medium.text} ${SEVERITY.medium.border}`,

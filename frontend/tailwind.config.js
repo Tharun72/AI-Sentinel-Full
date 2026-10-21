@@ -6,21 +6,21 @@ export default {
     extend: {
       colors: {
         bg: {
-          base: '#070B14',
-          surface: '#0B1120',
-          elevated: '#111827',
+          base: '#F7F9FC',
+          surface: '#FFFFFF',
+          elevated: '#FFFFFF',
         },
         border: {
-          subtle: '#1E2A44',
-          DEFAULT: '#1E2A44',
-          strong: '#2A3A5C',
+          subtle: '#E2E8F0',
+          DEFAULT: '#E2E8F0',
+          strong: '#CBD5E1',
         },
         brand: {
-          blue: '#3B82F6',
-          cyan: '#06B6D4',
-          emerald: '#10B981',
-          red: '#EF4444',
-          amber: '#F59E0B',
+          blue: '#2563EB',
+          cyan: '#0891B2',
+          emerald: '#059669',
+          red: '#DC2626',
+          amber: '#D97706',
         },
       },
       fontFamily: {
@@ -28,9 +28,9 @@ export default {
         mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       boxShadow: {
-        glass: '0 8px 32px 0 rgba(0,0,0,0.37)',
-        'glow-blue': '0 0 0 1px rgba(59,130,246,0.3), 0 8px 24px -8px rgba(59,130,246,0.35)',
-        'glow-emerald': '0 0 0 1px rgba(16,185,129,0.3), 0 8px 24px -8px rgba(16,185,129,0.35)',
+        glass: '0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.05)',
+        'glow-blue': '0 1px 2px rgba(37, 99, 235, 0.18), 0 8px 20px -10px rgba(37, 99, 235, 0.35)',
+        'glow-emerald': '0 1px 2px rgba(5, 150, 105, 0.18), 0 8px 20px -10px rgba(5, 150, 105, 0.3)',
       },
       backdropBlur: {
         xs: '2px',

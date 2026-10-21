@@ -1,6 +1,17 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+try:
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+
+    USES_PYDANTIC_SETTINGS = True
+except ImportError:  # pragma: no cover - compatibility for incomplete local envs
+    # Pydantic v2 bundles the v1 settings API. Keep the application runnable
+    # when a developer has installed ``pydantic`` but not its separate settings
+    # package; production installs should still use the pinned dependency.
+    from pydantic.v1 import BaseSettings
+
+    SettingsConfigDict = None
+    USES_PYDANTIC_SETTINGS = False
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -45,10 +56,15 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str
     REPORT_DIR: str
 
-    model_config = SettingsConfigDict(
-        env_file=BACKEND_DIR / ".env",
-        extra="ignore",
-    )
+    if USES_PYDANTIC_SETTINGS:
+        model_config = SettingsConfigDict(
+            env_file=BACKEND_DIR / ".env",
+            extra="ignore",
+        )
+    else:
+        class Config:
+            env_file = BACKEND_DIR / ".env"
+            extra = "ignore"
 
 
 settings = Settings()
