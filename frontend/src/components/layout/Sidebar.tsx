@@ -23,7 +23,7 @@ export function Sidebar({
       {mobileOpen && <div className="fixed inset-0 z-40 bg-slate-950/30 backdrop-blur-sm lg:hidden" onClick={onCloseMobile} />}
       <aside
         className={twMerge(
-          'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl transition-all duration-300',
+          'app-sidebar fixed inset-y-0 left-0 z-50 flex flex-col border-r border-slate-200 bg-white/95 shadow-sm backdrop-blur-xl transition-all duration-300',
           collapsed ? 'w-[68px]' : 'w-64',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         )}
@@ -46,7 +46,7 @@ export function Sidebar({
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4 space-y-1">
+        <nav className="flex-1 overflow-y-auto scrollbar-app px-3 py-4 space-y-1">
           {NAV_ITEMS.map((item) => {
             const active = current === item.id;
             const Icon = item.icon;

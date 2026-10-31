@@ -21,6 +21,7 @@ from app.core.time import utc_now
 from app.database.database import SessionLocal
 from app.models.scan import Scan
 from app.scanners.scanner import ScanDeadlineExceeded, ScanLimitExceeded, SecurityScanner
+from app.services.audit_service import record_audit_event
 from app.services.repository_validation import validate_branch_name, validate_repository_url
 from app.services.scan_service import persist_ai_analysis, persist_static_scan_results
 
@@ -56,40 +57,32 @@ def _remaining_seconds(deadline: float) -> float:
     return remaining
 
 
+def _actor_id(scan: Scan) -> int | None:
+    return scan.project.owner_id if scan.project is not None else None
+
+
 def _repository_source_size(path: Path, deadline: float) -> int:
     """Measure checkout source files without counting Git object storage."""
 
     size = 0
     for directory, directory_names, file_names in os.walk(path):
         _remaining_seconds(deadline)
-        directory_names[:] = [
-            name for name in directory_names
-            if name not in SecurityScanner.ignored_directories
-        ]
+        directory_names[:] = [name for name in directory_names if name not in SecurityScanner.ignored_directories]
         for file_name in file_names:
             try:
                 size += (Path(directory) / file_name).stat().st_size
             except OSError:
                 continue
             if size > settings.SCAN_MAX_REPOSITORY_SIZE_BYTES:
-                raise ScanLimitExceeded(
-                    "Repository source exceeds the configured size limit."
-                )
+                raise ScanLimitExceeded("Repository source exceeds the configured size limit.")
     return size
 
 
 def _update_progress(
-    db,
-    scan_id: int,
-    *,
-    stage: str,
-    progress_percent: float,
-    files_discovered: int | None = None,
-    files_processed: int | None = None,
-    current_file: str | None = None,
-    ai_completed: int | None = None,
-    ai_total: int | None = None,
-    **values,
+    db, scan_id: int, *, stage: str, progress_percent: float,
+    files_discovered: int | None = None, files_processed: int | None = None,
+    current_file: str | None = None, ai_completed: int | None = None,
+    ai_total: int | None = None, **values,
 ) -> bool:
     """Persist a real worker event and return false if work was interrupted."""
 
@@ -102,7 +95,6 @@ def _update_progress(
     if files_discovered is not None:
         scan.files_discovered = max(0, files_discovered)
     if files_processed is not None:
-        # A processed-file count can never exceed discovered candidates.
         scan.files_processed = min(max(0, files_processed), scan.files_discovered or 0)
         scan.files_scanned = scan.files_processed
     scan.current_file = current_file
@@ -128,6 +120,16 @@ def _mark_scan_failed(db, scan_id: int, error: Exception) -> None:
             scan.current_file = None
             scan.error_message = _safe_error_message(error)
             scan.completed_at = utc_now()
+            record_audit_event(
+                db,
+                event_type="scan.failed",
+                resource_type="scan",
+                resource_id=scan.id,
+                project_id=scan.project_id,
+                actor_id=_actor_id(scan),
+                outcome="failure",
+                metadata={"reason": type(error).__name__},
+            )
             db.commit()
     except SQLAlchemyError:
         db.rollback()
@@ -141,24 +143,21 @@ def recover_stale_scans() -> int:
     try:
         cutoff = utc_now() - timedelta(seconds=settings.STALE_SCAN_TIMEOUT_SECONDS)
         stale_scans = (
-            db.query(Scan)
-            .filter(Scan.status.in_(("pending", "running")))
-            .filter(
-                or_(
-                    Scan.started_at < cutoff,
-                    (Scan.started_at.is_(None) & (Scan.created_at < cutoff)),
-                )
-            )
+            db.query(Scan).filter(Scan.status.in_(("pending", "running")))
+            .filter(or_(Scan.started_at < cutoff, (Scan.started_at.is_(None) & (Scan.created_at < cutoff))))
             .all()
         )
         for scan in stale_scans:
             scan.status = "failed"
             scan.stage = "failed"
             scan.current_file = None
-            scan.error_message = (
-                "Worker interrupted or timed out; start a new scan to retry."
-            )
+            scan.error_message = "Worker interrupted or timed out; start a new scan to retry."
             scan.completed_at = utc_now()
+            record_audit_event(
+                db, event_type="scan.failed", resource_type="scan", resource_id=scan.id,
+                project_id=scan.project_id, actor_id=_actor_id(scan), outcome="failure",
+                metadata={"reason": "worker_interrupted"},
+            )
         if stale_scans:
             db.commit()
             logger.warning("Recovered %s stale scan(s)", len(stale_scans))
@@ -172,20 +171,11 @@ def recover_stale_scans() -> int:
 
 
 def normalize_legacy_terminal_scans() -> int:
-    """Backfill display-only progress for scans completed by the older worker.
-
-    The values are copied only from their already persisted terminal counters;
-    they are not estimates of historical work.
-    """
+    """Backfill display-only progress for scans completed by an older worker."""
 
     db = SessionLocal()
     try:
-        legacy_scans = (
-            db.query(Scan)
-            .filter(Scan.status.in_(("completed", "failed", "cancelled")))
-            .filter(Scan.stage == "queued")
-            .all()
-        )
+        legacy_scans = db.query(Scan).filter(Scan.status.in_(("completed", "failed", "cancelled"))).filter(Scan.stage == "queued").all()
         for scan in legacy_scans:
             scan.stage = "completed" if scan.status == "completed" else scan.status
             if scan.status == "completed":
@@ -217,8 +207,6 @@ def _analyze_item(item: dict) -> dict[str, str]:
             vulnerable_code=item.get("code"),
         )
     except Exception:
-        # The model is an isolated optional capability.  This should be rare
-        # because the Ollama client already turns network errors into blanks.
         logger.exception("Unexpected AI analysis failure for %s", item.get("type"))
         return empty_analysis()
 
@@ -245,6 +233,10 @@ def run_scan_background(scan_id: int) -> None:
         scan.stage = "validating_repository"
         scan.progress_percent = 0.0
         scan.error_message = None
+        record_audit_event(
+            db, event_type="scan.started", resource_type="scan", resource_id=scan.id,
+            project_id=scan.project_id, actor_id=_actor_id(scan), metadata={"branch": scan.branch or "main"},
+        )
         db.commit()
 
         repository_url = validate_repository_url(scan.repository_url)
@@ -257,36 +249,24 @@ def run_scan_background(scan_id: int) -> None:
         git_environment = os.environ.copy()
         git_environment.update({"GIT_TERMINAL_PROMPT": "0", "GIT_ALLOW_PROTOCOL": "https:http"})
         clone_command = [
-            "git", "-c", "protocol.file.allow=never", "clone", "--depth", "1",
-            "--no-tags", "--single-branch", "--branch", branch, "--", repository_url,
-            str(repository_path),
+            "git", "-c", "protocol.file.allow=never", "clone", "--depth", "1", "--no-tags",
+            "--single-branch", "--branch", branch, "--", repository_url, str(repository_path),
         ]
         phase_started = time.monotonic()
         subprocess.run(
-            clone_command,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=min(settings.GIT_CLONE_TIMEOUT_SECONDS, _remaining_seconds(deadline)),
-            env=git_environment,
+            clone_command, check=True, capture_output=True, text=True,
+            timeout=min(settings.GIT_CLONE_TIMEOUT_SECONDS, _remaining_seconds(deadline)), env=git_environment,
         )
         revision_result = subprocess.run(
             ["git", "-C", str(repository_path), "rev-parse", "HEAD"],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=min(10, _remaining_seconds(deadline)),
-            env=git_environment,
+            check=True, capture_output=True, text=True, timeout=min(10, _remaining_seconds(deadline)), env=git_environment,
         )
         revision = revision_result.stdout.strip() if isinstance(revision_result.stdout, str) else None
         scan.repository_revision = revision[:128] if revision else None
         db.commit()
         clone_duration = time.monotonic() - phase_started
         _repository_source_size(repository_path, deadline)
-        if not _update_progress(
-            db, scan_id, stage="file_discovery", progress_percent=25.0,
-            clone_duration_seconds=clone_duration,
-        ):
+        if not _update_progress(db, scan_id, stage="file_discovery", progress_percent=25.0, clone_duration_seconds=clone_duration):
             raise ScanInterrupted()
 
         discovery_started = time.monotonic()
@@ -300,39 +280,27 @@ def run_scan_background(scan_id: int) -> None:
                 static_started = now
                 should_write = True
             else:
-                should_write = (
-                    processed >= discovered
-                    or now - last_progress_at >= settings.SCAN_PROGRESS_UPDATE_INTERVAL_SECONDS
-                )
+                should_write = processed >= discovered or now - last_progress_at >= settings.SCAN_PROGRESS_UPDATE_INTERVAL_SECONDS
             if not should_write:
                 return
             progress = 35.0 if not discovered else 35.0 + 40.0 * (processed / discovered)
             if not _update_progress(
-                db,
-                scan_id,
-                stage="static_analysis",
-                progress_percent=progress,
-                files_discovered=discovered,
-                files_processed=processed,
-                current_file=current_file,
-                discovery_duration_seconds=(static_started - discovery_started),
+                db, scan_id, stage="static_analysis", progress_percent=progress,
+                files_discovered=discovered, files_processed=processed, current_file=current_file,
+                discovery_duration_seconds=static_started - discovery_started,
             ):
                 raise ScanInterrupted()
             last_progress_at = now
 
-        results = SecurityScanner().scan(
-            str(repository_path), progress_callback=scanner_progress, deadline=deadline
-        )
+        results = SecurityScanner().scan(str(repository_path), progress_callback=scanner_progress, deadline=deadline)
         if static_started is None:
             static_started = time.monotonic()
             scanner_progress(0, 0, None)
         static_duration = time.monotonic() - static_started
         if not _update_progress(
             db, scan_id, stage="result_persistence", progress_percent=76.0,
-            files_discovered=results["files_discovered"],
-            files_processed=results["files_processed"],
-            current_file=None,
-            static_analysis_duration_seconds=static_duration,
+            files_discovered=results["files_discovered"], files_processed=results["files_processed"],
+            current_file=None, static_analysis_duration_seconds=static_duration,
         ):
             raise ScanInterrupted()
 
@@ -341,15 +309,14 @@ def run_scan_background(scan_id: int) -> None:
         _, persisted_findings = persist_static_scan_results(db, scan, results)
         static_persistence_duration = time.monotonic() - phase_started
 
-        ai_pairs = persisted_findings[: settings.AI_MAX_FINDINGS] if settings.AI_ENABLED else []
+        ai_pairs = persisted_findings[:settings.AI_MAX_FINDINGS] if settings.AI_ENABLED else []
         ai_total = len(ai_pairs)
         note: str | None = None
         if settings.AI_ENABLED and len(persisted_findings) > ai_total:
             note = f"AI enrichment is limited to the first {settings.AI_MAX_FINDINGS} findings."
         if not _update_progress(
             db, scan_id, stage="ai_enrichment" if ai_total else "result_persistence",
-            progress_percent=80.0 if ai_total else 95.0,
-            ai_total=ai_total, ai_completed=0,
+            progress_percent=80.0 if ai_total else 95.0, ai_total=ai_total, ai_completed=0,
             persistence_duration_seconds=static_persistence_duration,
         ):
             raise ScanInterrupted()
@@ -357,18 +324,9 @@ def run_scan_background(scan_id: int) -> None:
         ai_started = time.monotonic()
         ai_completed = 0
         if ai_pairs:
-            executor = ThreadPoolExecutor(
-                max_workers=max(1, settings.AI_ENRICHMENT_CONCURRENCY),
-                thread_name_prefix="ai-sentinel-ai",
-            )
-            futures: dict[Future, int] = {
-                executor.submit(_analyze_item, item): vulnerability.id
-                for vulnerability, item in ai_pairs
-            }
-            ai_deadline = min(
-                deadline,
-                ai_started + settings.AI_MAX_DURATION_SECONDS,
-            )
+            executor = ThreadPoolExecutor(max_workers=max(1, settings.AI_ENRICHMENT_CONCURRENCY), thread_name_prefix="ai-sentinel-ai")
+            futures: dict[Future, int] = {executor.submit(_analyze_item, item): vulnerability.id for vulnerability, item in ai_pairs}
+            ai_deadline = min(deadline, ai_started + settings.AI_MAX_DURATION_SECONDS)
             while futures:
                 remaining = ai_deadline - time.monotonic()
                 if remaining <= 0:
@@ -376,9 +334,7 @@ def run_scan_background(scan_id: int) -> None:
                         future.cancel()
                     note = "Static scan completed; AI enrichment reached its time limit."
                     break
-                completed, _ = wait(
-                    futures, timeout=remaining, return_when=FIRST_COMPLETED
-                )
+                completed, _ = wait(futures, timeout=remaining, return_when=FIRST_COMPLETED)
                 if not completed:
                     for future in futures:
                         future.cancel()
@@ -394,10 +350,7 @@ def run_scan_background(scan_id: int) -> None:
                     persist_ai_analysis(db, vulnerability_id, analysis)
                     ai_completed += 1
                     progress = 80.0 + 15.0 * (ai_completed / ai_total)
-                    if not _update_progress(
-                        db, scan_id, stage="ai_enrichment", progress_percent=progress,
-                        ai_completed=ai_completed, ai_total=ai_total,
-                    ):
+                    if not _update_progress(db, scan_id, stage="ai_enrichment", progress_percent=progress, ai_completed=ai_completed, ai_total=ai_total):
                         raise ScanInterrupted()
             executor.shutdown(wait=False, cancel_futures=True)
             executor = None
@@ -414,14 +367,16 @@ def run_scan_background(scan_id: int) -> None:
         scan.ai_completed = ai_completed
         scan.ai_total = ai_total
         scan.ai_duration_seconds = ai_duration
-        scan.persistence_duration_seconds = static_persistence_duration + (
-            time.monotonic() - final_persistence_started
-        )
+        scan.persistence_duration_seconds = static_persistence_duration + (time.monotonic() - final_persistence_started)
         scan.error_message = note
         scan.completed_at = utc_now()
+        record_audit_event(
+            db, event_type="scan.completed", resource_type="scan", resource_id=scan.id,
+            project_id=scan.project_id, actor_id=_actor_id(scan),
+            metadata={"findings": scan.vulnerabilities_found or 0, "files_scanned": scan.files_scanned or 0, "risk_score": scan.risk_score or 0.0},
+        )
         db.commit()
         logger.info("Scan %s completed", scan_id)
-
     except ScanInterrupted:
         logger.info("Scan %s stopped after it was terminalized elsewhere", scan_id)
     except Exception as exc:

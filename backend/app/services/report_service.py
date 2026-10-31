@@ -37,6 +37,7 @@ def _scan_record(scan: Scan) -> dict[str, object]:
                 "severity": finding.severity,
                 "cvss": finding.cvss,
                 "description": finding.description,
+                "evidence": finding.evidence,
                 "recommendation": finding.recommendation,
                 "ai_explanation": finding.ai_explanation,
                 "ai_impact": finding.ai_impact,
@@ -86,7 +87,7 @@ def build_report(projects: list[Project], scans: list[Scan], report_format: Repo
             fieldnames=[
                 "project", "scan_id", "status", "branch", "created_at", "files_scanned",
                 "finding_id", "severity", "vulnerability_type", "file_path", "line_number",
-                "cvss", "description", "recommendation",
+                "cvss", "description", "evidence", "recommendation",
             ],
         )
         writer.writeheader()
@@ -107,6 +108,7 @@ def build_report(projects: list[Project], scans: list[Scan], report_format: Repo
                     "line_number": finding.line_number if finding else "",
                     "cvss": finding.cvss if finding else "",
                     "description": finding.description if finding else "",
+                    "evidence": finding.evidence if finding else "",
                     "recommendation": finding.recommendation if finding else "",
                 })
         content = output.getvalue()
@@ -134,6 +136,7 @@ def build_report(projects: list[Project], scans: list[Scan], report_format: Repo
                 }],
                 "properties": {
                     "cvss": finding.cvss,
+                    "evidence": finding.evidence,
                     "recommendation": finding.recommendation,
                     "scanId": scan.id,
                 },

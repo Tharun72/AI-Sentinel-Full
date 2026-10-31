@@ -33,7 +33,10 @@ class Settings(BaseSettings):
     OLLAMA_URL: str
     OLLAMA_MODEL: str = "qwen2.5-coder:7b"
     OLLAMA_CONNECT_TIMEOUT_SECONDS: int = 10
-    OLLAMA_READ_TIMEOUT_SECONDS: int = 20
+    # A local 7B model can require longer than a short HTTP default on first
+    # inference or CPU-only machines. Deployments may still lower/raise this
+    # through the environment without changing application code.
+    OLLAMA_READ_TIMEOUT_SECONDS: int = 90
     AI_MAX_SOURCE_CONTEXT_CHARS: int = 2_000
     AI_ENABLED: bool = True
     AI_MAX_FINDINGS: int = 20
