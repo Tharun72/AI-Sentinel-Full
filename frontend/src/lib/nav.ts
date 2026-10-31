@@ -5,11 +5,8 @@ import {
   Radar,
   Sparkles,
   Wrench,
-  Blocks,
   FileBarChart,
   History,
-  Users,
-  KeyRound,
   Settings,
   LayoutDashboard,
 } from 'lucide-react';
@@ -21,11 +18,9 @@ export type PageId =
   | 'scan'
   | 'ai-review'
   | 'fixes'
-  | 'blockchain'
+  | 'audit'
   | 'reports'
   | 'history'
-  | 'team'
-  | 'api-keys'
   | 'settings';
 
 export const NAV_ITEMS: { id: PageId; label: string; icon: typeof ShieldCheck }[] = [
@@ -35,11 +30,9 @@ export const NAV_ITEMS: { id: PageId; label: string; icon: typeof ShieldCheck }[
   { id: 'scan', label: 'Security Scan', icon: Radar },
   { id: 'ai-review', label: 'AI Review', icon: Sparkles },
   { id: 'fixes', label: 'Secure Fixes', icon: Wrench },
-  { id: 'blockchain', label: 'Blockchain Verification', icon: Blocks },
+  { id: 'audit', label: 'Audit History', icon: History },
   { id: 'reports', label: 'Reports', icon: FileBarChart },
   { id: 'history', label: 'Scan History', icon: History },
-  { id: 'team', label: 'Team', icon: Users },
-  { id: 'api-keys', label: 'API Keys', icon: KeyRound },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 

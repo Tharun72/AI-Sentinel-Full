@@ -13,26 +13,28 @@ import { EditorPage } from './pages/EditorPage';
 import { ScanPage } from './pages/ScanPage';
 import { AIReviewPage } from './pages/AIReviewPage';
 import { FixesPage } from './pages/FixesPage';
-import { BlockchainPage } from './pages/BlockchainPage';
+import { AuditPage } from './pages/AuditPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { HistoryPage } from './pages/HistoryPage';
-import { TeamPage } from './pages/TeamPage';
-import { ApiKeysPage } from './pages/ApiKeysPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { SettingsPage, type SettingsView } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { logout } from './services/authService';
 
 import twMerge from './lib/twMerge';
 
 function getPageFromHash(): PageId {
-  const candidate = window.location.hash.replace(/^#\/?/, '') as PageId;
+  const candidate = window.location.hash.replace(/^#\/?/, '').split('/')[0] as PageId;
   return candidate && candidate in NAVIGATION_PAGES ? candidate : 'dashboard';
+}
+
+function getSettingsViewFromHash(): SettingsView {
+  const candidate = window.location.hash.replace(/^#\/?settings\/?/, '') as SettingsView;
+  return candidate === 'preferences' || candidate === 'security' || candidate === 'profile' ? candidate : 'profile';
 }
 
 const NAVIGATION_PAGES: Record<PageId, true> = {
   dashboard: true, upload: true, editor: true, scan: true, 'ai-review': true,
-  fixes: true, blockchain: true, reports: true, history: true, team: true,
-  'api-keys': true, settings: true,
+  fixes: true, audit: true, reports: true, history: true, settings: true,
 };
 
 
@@ -42,6 +44,7 @@ export default function App() {
   );
 
   const [page, setPage] = useState<PageId>(getPageFromHash);
+  const [settingsView, setSettingsView] = useState<SettingsView>(getSettingsViewFromHash);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -52,23 +55,28 @@ export default function App() {
     upload: UploadPage,
     editor: EditorPage,
     scan: ScanPage,
-    'ai-review': AIReviewPage,
-    fixes: FixesPage,
-    blockchain: BlockchainPage,
+    'ai-review': () => <AIReviewPage onNavigate={navigate} />,
+    fixes: () => <FixesPage onNavigate={navigate} />,
+    audit: AuditPage,
     reports: ReportsPage,
     history: HistoryPage,
-    team: TeamPage,
-    'api-keys': ApiKeysPage,
-    settings: SettingsPage,
+    settings: () => <SettingsPage activeView={settingsView} onSelectView={navigateSettings} />,
   };
 
-  const navigate = (nextPage: PageId) => {
+  function navigate(nextPage: PageId) {
+    if (nextPage === 'settings') { navigateSettings('profile'); return; }
     window.location.hash = nextPage;
     setPage(nextPage);
-  };
+  }
+
+  function navigateSettings(view: SettingsView) {
+    window.location.hash = `settings/${view}`;
+    setPage('settings');
+    setSettingsView(view);
+  }
 
   useEffect(() => {
-    const syncLocation = () => setPage(getPageFromHash());
+    const syncLocation = () => { setPage(getPageFromHash()); setSettingsView(getSettingsViewFromHash()); };
     window.addEventListener('hashchange', syncLocation);
     if (!window.location.hash) window.location.hash = 'dashboard';
     return () => window.removeEventListener('hashchange', syncLocation);
@@ -127,16 +135,18 @@ export default function App() {
         <TopNav
           onOpenMobile={() => setMobileOpen(true)}
           onOpenSearch={() => setSearchOpen(true)}
+          onOpenSettings={navigateSettings}
           onLogout={() => {
             logout();
             setAuthenticated(false);
           }}
         />
 
-        <main className="relative px-4 py-6 lg:px-8">
+        <main className={twMerge('relative px-4 py-6 lg:px-8', page === 'ai-review' && 'lg:h-[calc(100dvh-4rem)] lg:overflow-hidden')}>
           <AnimatePresence mode="wait">
             <motion.div
               key={page}
+              className={page === 'ai-review' ? 'h-full min-h-0' : undefined}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}

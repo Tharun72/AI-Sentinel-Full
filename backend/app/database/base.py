@@ -1,7 +1,8 @@
-from app.database.database import Base
+"""Import all mapped models before database metadata is initialized."""
 
-from app.models.user import User
+from app.models.audit import AuditChain, AuditEvent
 from app.models.project import Project
 from app.models.scan import Scan
-from app.models.vulnerability import Vulnerability
 from app.models.secure_fix import SecureFix
+from app.models.user import User
+from app.models.vulnerability import Vulnerability

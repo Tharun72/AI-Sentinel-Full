@@ -8,6 +8,7 @@ export interface Vulnerability {
   severity: string | null;
   cvss: number | null;
   description: string | null;
+  evidence: string | null;
   recommendation: string | null;
 
   // AI Security Analysis
@@ -26,6 +27,7 @@ export interface Scan {
   status: string;
   repository_url: string | null;
   branch: string | null;
+  repository_revision: string | null;
   started_at: string | null;
   completed_at: string | null;
   files_scanned: number | null;

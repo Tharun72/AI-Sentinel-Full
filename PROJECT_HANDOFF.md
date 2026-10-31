@@ -1,4 +1,8 @@
-# AI Sentinel Project Handoff
+# Historical AI Sentinel Project Handoff
+
+> This document is a historical handoff and is superseded by `README.md`.
+> The current product exposes Audit History & Verification backed by the
+> database; it has no blockchain dependency or blockchain verification feature.
 
 ## Architecture
 
